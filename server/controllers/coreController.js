@@ -1,8 +1,7 @@
 import Tesseract from 'tesseract.js';
-import { client as redisClient } from '../config/redis.js';
+import { client } from '../config/redis.js';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import db from '../config/db.js';
 
 // Simple mock interaction database
 const interactionDb = {
@@ -18,22 +17,28 @@ export const uploadPrescription = async (req, res) => {
             return res.status(400).json({ message: 'No image uploaded' });
         }
 
+        console.log('Processing upload for user:', req.username);
         const imageBuffer = req.file.buffer;
         const imageHash = crypto.createHash('md5').update(imageBuffer).digest('hex');
         const cacheKey = `ocr:${imageHash}`;
 
-        // Check Redis cache
-        const cachedOcr = await redisClient.get(cacheKey);
+        // Check cache
+        const cachedOcr = await client.get(cacheKey);
         if (cachedOcr) {
+            console.log('Using cached OCR result');
             const drugs = extractDrugs(cachedOcr);
             return res.json({ text: cachedOcr, drugs });
         }
 
         // Run OCR
-        const { data: { text } } = await Tesseract.recognize(imageBuffer, 'eng');
+        console.log('Starting Tesseract OCR...');
+        const { data: { text } } = await Tesseract.recognize(imageBuffer, 'eng', {
+            logger: m => console.log('Tesseract:', m.status, Math.round(m.progress * 100) + '%')
+        });
+        console.log('OCR completed successfully');
         
-        // Cache result in Redis
-        await redisClient.set(cacheKey, text, { EX: 604800 }); // 1 week
+        // Cache result
+        await client.set(cacheKey, text, { EX: 604800 }); // 1 week
 
         const drugs = extractDrugs(text);
 
@@ -46,7 +51,7 @@ export const uploadPrescription = async (req, res) => {
 
 export const checkInteraction = async (req, res) => {
     try {
-        const { drugs } = req.body; // Array of drug names
+        const { drugs } = req.body; 
 
         if (!drugs || drugs.length < 2) {
             return res.json({ interactions: [] });
@@ -58,16 +63,14 @@ export const checkInteraction = async (req, res) => {
                 const drugA = drugs[i].toLowerCase().trim();
                 const drugB = drugs[j].toLowerCase().trim();
                 
-                // Check both directions
                 const key1 = `${drugA}:${drugB}`;
                 const key2 = `${drugB}:${drugA}`;
                 
-                // Check Redis cache first
-                let interaction = await redisClient.get(`interaction:${key1}`);
+                let interaction = await client.get(`interaction:${key1}`);
                 if (!interaction) {
                     interaction = interactionDb[key1] || interactionDb[key2] || null;
                     if (interaction) {
-                        await redisClient.set(`interaction:${key1}`, interaction, { EX: 604800 });
+                        await client.set(`interaction:${key1}`, interaction, { EX: 604800 });
                     }
                 }
 
@@ -90,12 +93,18 @@ export const savePrescription = async (req, res) => {
         const username = req.username;
 
         const id = uuidv4();
-        
-        // Store in MySQL
-        await db.execute(
-            'INSERT INTO prescriptions (id, username, drugs, rawText, createdAt) VALUES (?, ?, ?, ?, ?)',
-            [id, username, JSON.stringify(drugs), rawText, new Date()]
-        );
+        const prescriptionKey = `prescription:${id}`;
+
+        await client.hSet(prescriptionKey, {
+            id,
+            username,
+            drugs: JSON.stringify(drugs),
+            rawText,
+            createdAt: new Date().toISOString()
+        });
+
+        // Add to user's history list
+        await client.lPush(`user:${username}:prescriptions`, id);
 
         res.json({ message: 'Prescription saved', id });
     } catch (error) {
@@ -107,24 +116,27 @@ export const savePrescription = async (req, res) => {
 export const getHistory = async (req, res) => {
     try {
         const username = req.username;
-        
-        // Fetch from MySQL
-        const [rows] = await db.execute(
-            'SELECT * FROM prescriptions WHERE username = ? ORDER BY createdAt DESC',
-            [username]
-        );
+        console.log('Fetching history for user:', username);
+        const prescriptionIds = await client.lRange(`user:${username}:prescriptions`, 0, -1);
+        console.log('Found prescription IDs:', prescriptionIds.length);
 
-        res.json(rows);
+        const history = [];
+        for (const id of prescriptionIds) {
+            const data = await client.hGetAll(`prescription:${id}`);
+            if (data && Object.keys(data).length > 0) {
+                data.drugs = JSON.parse(data.drugs);
+                history.push(data);
+            }
+        }
+
+        res.json(history);
     } catch (error) {
         console.error('History error:', error);
         res.status(500).json({ message: 'Error fetching history' });
     }
 };
 
-// Helper: Simple Regex to find common drug names (or words that look like drugs)
 const extractDrugs = (text) => {
-    // This is a simplified regex for MVP. In reality, you'd match against a database.
-    // For now, let's look for capitalized words or common patterns.
     const commonDrugs = [
         'Aspirin', 'Warfarin', 'Metformin', 'Ibuprofen', 'Simvastatin', 
         'Clarithromycin', 'Amoxicillin', 'Lisinopril', 'Levothyroxine', 
