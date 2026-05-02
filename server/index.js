@@ -1,14 +1,11 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { connectRedis } from './config/redis.js';
 import authRoutes from './routes/auth.js';
 import coreRoutes from './routes/core.js';
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 // Middleware
 app.use(cors());
@@ -23,7 +20,7 @@ const startServer = async () => {
     try {
         await connectRedis();
         app.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
+            console.log(`Server running on http://localhost:5000`);
         });
     } catch (error) {
         console.error('Failed to start server:', error);
