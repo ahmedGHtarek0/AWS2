@@ -1,7 +1,8 @@
 import Tesseract from 'tesseract.js';
-import { client } from '../config/redis.js';
+import { client as redisClient } from '../config/redis.js';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import db from '../config/db.js';
 
 // Simple mock interaction database
 const interactionDb = {
@@ -16,27 +17,23 @@ export const uploadPrescription = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No image uploaded' });
         }
-        console.log('Processing upload for user:', req.username);
+
         const imageBuffer = req.file.buffer;
         const imageHash = crypto.createHash('md5').update(imageBuffer).digest('hex');
         const cacheKey = `ocr:${imageHash}`;
 
-        // Check cache
-        const cachedOcr = await client.get(cacheKey);
+        // Check Redis cache
+        const cachedOcr = await redisClient.get(cacheKey);
         if (cachedOcr) {
             const drugs = extractDrugs(cachedOcr);
             return res.json({ text: cachedOcr, drugs });
         }
 
         // Run OCR
-        console.log('Starting Tesseract OCR...');
-        const { data: { text } } = await Tesseract.recognize(imageBuffer, 'eng', {
-            logger: m => console.log('Tesseract:', m.status, Math.round(m.progress * 100) + '%')
-        });
-        console.log('OCR completed successfully');
+        const { data: { text } } = await Tesseract.recognize(imageBuffer, 'eng');
         
-        // Cache result
-        await client.set(cacheKey, text, { EX: 604800 }); // 1 week
+        // Cache result in Redis
+        await redisClient.set(cacheKey, text, { EX: 604800 }); // 1 week
 
         const drugs = extractDrugs(text);
 
@@ -65,12 +62,12 @@ export const checkInteraction = async (req, res) => {
                 const key1 = `${drugA}:${drugB}`;
                 const key2 = `${drugB}:${drugA}`;
                 
-                // Check cache first
-                let interaction = await client.get(`interaction:${key1}`);
+                // Check Redis cache first
+                let interaction = await redisClient.get(`interaction:${key1}`);
                 if (!interaction) {
                     interaction = interactionDb[key1] || interactionDb[key2] || null;
                     if (interaction) {
-                        await client.set(`interaction:${key1}`, interaction, { EX: 604800 });
+                        await redisClient.set(`interaction:${key1}`, interaction, { EX: 604800 });
                     }
                 }
 
@@ -90,21 +87,15 @@ export const checkInteraction = async (req, res) => {
 export const savePrescription = async (req, res) => {
     try {
         const { drugs, rawText } = req.body;
-        const username = req.username; // From auth middleware
+        const username = req.username;
 
         const id = uuidv4();
-        const prescriptionKey = `prescription:${id}`;
-
-        await client.hSet(prescriptionKey, {
-            id,
-            username,
-            drugs: JSON.stringify(drugs),
-            rawText,
-            createdAt: new Date().toISOString()
-        });
-
-        // Add to user's history list
-        await client.lPush(`user:${username}:prescriptions`, id);
+        
+        // Store in MySQL
+        await db.execute(
+            'INSERT INTO prescriptions (id, username, drugs, rawText, createdAt) VALUES (?, ?, ?, ?, ?)',
+            [id, username, JSON.stringify(drugs), rawText, new Date()]
+        );
 
         res.json({ message: 'Prescription saved', id });
     } catch (error) {
@@ -116,20 +107,14 @@ export const savePrescription = async (req, res) => {
 export const getHistory = async (req, res) => {
     try {
         const username = req.username;
-        console.log('Fetching history for user:', username);
-        const prescriptionIds = await client.lRange(`user:${username}:prescriptions`, 0, -1);
-        console.log('Found prescription IDs:', prescriptionIds.length);
+        
+        // Fetch from MySQL
+        const [rows] = await db.execute(
+            'SELECT * FROM prescriptions WHERE username = ? ORDER BY createdAt DESC',
+            [username]
+        );
 
-        const history = [];
-        for (const id of prescriptionIds) {
-            const data = await client.hGetAll(`prescription:${id}`);
-            if (data && Object.keys(data).length > 0) {
-                data.drugs = JSON.parse(data.drugs);
-                history.push(data);
-            }
-        }
-
-        res.json(history);
+        res.json(rows);
     } catch (error) {
         console.error('History error:', error);
         res.status(500).json({ message: 'Error fetching history' });
