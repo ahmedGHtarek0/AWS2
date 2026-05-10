@@ -8,6 +8,7 @@ import Upload from './pages/Upload';
 import Results from './pages/Results';
 import History from './pages/History';
 import { getMe } from './services/api';
+import Loader from './components/Loader';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -29,7 +30,11 @@ function App() {
     initAuth();
   }, []);
 
-  if (loading) return <div style={{ color: 'white', padding: '2rem' }}>Loading MedScript...</div>;
+  if (loading) return (
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Loader text="Initializing MedScript Secure Portal..." />
+    </div>
+  );
 
   const ProtectedRoute = ({ children }) => {
     return user ? children : <Navigate to="/login" />;
