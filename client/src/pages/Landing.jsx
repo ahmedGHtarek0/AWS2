@@ -6,6 +6,8 @@ import { Shield, Zap, Search, Clock } from 'lucide-react';
 const Landing = () => {
   return (
     <div className="fade-in">
+      <div className="blob blob-1"></div>
+      <div className="blob blob-2"></div>
       <section style={{ textAlign: 'center', padding: '4rem 0' }}>
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}

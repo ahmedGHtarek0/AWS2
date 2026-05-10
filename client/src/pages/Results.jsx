@@ -56,6 +56,8 @@ const Results = () => {
 
   return (
     <div className="fade-in">
+      <div className="blob blob-1"></div>
+      <div className="blob blob-2"></div>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h1>Analysis Results</h1>
         <p style={{ color: 'var(--text-muted)' }}>Drugs identified from your prescription</p>
@@ -91,7 +93,10 @@ const Results = () => {
           </div>
 
           {checking ? (
-            <p>Checking interactions...</p>
+            <div style={{ padding: '2rem 0' }}>
+               <div className="loader" style={{ width: '30px', height: '30px', margin: '0 auto', display: 'block' }}></div>
+               <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Analyzing interactions...</p>
+            </div>
           ) : interactions.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {interactions.map((item, i) => (
@@ -121,13 +126,6 @@ const Results = () => {
           </button>
         </div>
       )}
-
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '4rem' }}>
-        <h3 style={{ marginBottom: '1rem' }}>OCR Raw Text</h3>
-        <div className="glass" style={{ padding: '1.5rem', maxHeight: '200px', overflowY: 'auto', color: 'var(--text-muted)', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
-          {result.text}
-        </div>
-      </motion.div>
     </div>
   );
 };
