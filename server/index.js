@@ -1,3 +1,7 @@
+import crypto from 'node:crypto';
+if (!globalThis.crypto) {
+  globalThis.crypto = crypto;
+}
 import express from 'express';
 import cors from 'cors';
 import { connectRedis } from './config/redis.js';
@@ -26,6 +30,16 @@ app.get("/health", (req, res) => {
 });
 
 app.use('/api', coreRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json({ 
+        message: 'Internal Server Error', 
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
+});
+
 // Connect to Redis and start server
 const startServer = async () => {
     try {
