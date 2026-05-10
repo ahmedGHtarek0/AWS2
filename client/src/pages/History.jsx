@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { getHistory } from '../services/api';
 import { Clock, Calendar, Pill, ChevronRight } from 'lucide-react';
 
+import Loader from '../components/Loader';
+
 const History = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,10 +29,16 @@ const History = () => {
     fetchHistory();
   }, []);
 
-  if (loading) return <div style={{ color: 'white', padding: '2rem' }}>Loading history...</div>;
+  if (loading) return (
+    <div style={{ height: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Loader text="Retrieving Medical Records..." />
+    </div>
+  );
 
   return (
     <div className="fade-in">
+      <div className="blob blob-1"></div>
+      <div className="blob blob-2"></div>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h1>Medical History</h1>
         <p style={{ color: 'var(--text-muted)' }}>Your saved prescriptions and analyses</p>

@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { checkInteractions, savePrescription } from '../services/api';
 import { AlertTriangle, CheckCircle, FileText, Pill, Save, Shield } from 'lucide-react';
 
+import Loader from '../components/Loader';
+
 const Results = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -93,10 +95,7 @@ const Results = () => {
           </div>
 
           {checking ? (
-            <div style={{ padding: '2rem 0' }}>
-               <div className="loader" style={{ width: '30px', height: '30px', margin: '0 auto', display: 'block' }}></div>
-               <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Analyzing interactions...</p>
-            </div>
+            <Loader size={60} text="Analyzing interactions..." />
           ) : interactions.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {interactions.map((item, i) => (
