@@ -1,7 +1,3 @@
-import crypto from 'node:crypto';
-if (!globalThis.crypto) {
-  globalThis.crypto = crypto;
-}
 import express from 'express';
 import cors from 'cors';
 import { connectRedis } from './config/redis.js';

@@ -1,6 +1,6 @@
 import Tesseract from 'tesseract.js';
 import { client } from '../config/redis.js';
-import crypto from 'node:crypto';
+
 
 // Simple mock interaction database
 const interactionDb = {
@@ -18,7 +18,7 @@ export const uploadPrescription = async (req, res) => {
 
         console.log('Processing upload for user:', req.username);
         const imageBuffer = req.file.buffer;
-        const imageHash = crypto.createHash('md5').update(imageBuffer).digest('hex');
+        const imageHash = `h-${imageBuffer.length}-${imageBuffer.slice(0, 50).toString('hex')}`;
         const cacheKey = `ocr:${imageHash}`;
 
         // Check cache
@@ -91,7 +91,7 @@ export const savePrescription = async (req, res) => {
         const { drugs, rawText } = req.body;
         const username = req.username;
 
-        const id = crypto.randomUUID();
+        const id = Math.random().toString(36).substring(2, 11) + Date.now();
         const prescriptionKey = `prescription:${id}`;
 
         await client.hSet(prescriptionKey, {
