@@ -1,7 +1,6 @@
 import Tesseract from 'tesseract.js';
 import { client } from '../config/redis.js';
-import { v4 as uuidv4 } from 'uuid';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 // Simple mock interaction database
 const interactionDb = {
@@ -92,7 +91,7 @@ export const savePrescription = async (req, res) => {
         const { drugs, rawText } = req.body;
         const username = req.username;
 
-        const id = uuidv4();
+        const id = crypto.randomUUID();
         const prescriptionKey = `prescription:${id}`;
 
         await client.hSet(prescriptionKey, {

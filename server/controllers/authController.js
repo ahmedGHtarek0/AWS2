@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'node:crypto';
 import { client } from '../config/redis.js';
 
 export const signup = async (req, res) => {
@@ -51,7 +51,7 @@ export const login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const token = uuidv4();
+        const token = crypto.randomUUID();
         const sessionKey = `session:${token}`;
 
         await client.set(sessionKey, username, {
