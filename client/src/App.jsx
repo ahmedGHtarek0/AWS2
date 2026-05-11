@@ -23,6 +23,7 @@ function App() {
           setUser(data.username);
         } catch (err) {
           localStorage.removeItem('token');
+          setUser(null);
         }
       }
       setLoading(false);
@@ -30,13 +31,8 @@ function App() {
     initAuth();
   }, []);
 
-  if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Loader text="Initializing MedScript Secure Portal..." />
-    </div>
-  );
-
   const ProtectedRoute = ({ children }) => {
+    if (loading) return <Loader text="Verifying session..." />;
     return user ? children : <Navigate to="/login" />;
   };
 

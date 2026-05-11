@@ -1,10 +1,11 @@
-import bcrypt from 'bcrypt';
+
 
 import { client } from '../config/redis.js';
 
 export const signup = async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const username = req.body.username?.trim();
+        const password = req.body.password?.trim();
 
         if (!username || !password) {
             return res.status(400).json({ message: 'Username and password are required' });
@@ -17,13 +18,14 @@ export const signup = async (req, res) => {
             return res.status(400).json({ message: 'Username already taken' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = password; // No encryption as requested
 
         await client.hSet(userKey, {
             username,
             password: hashedPassword
         });
 
+        console.log(`User ${username} signed up successfully.`);
         res.status(201).json({ message: 'User created successfully' });
     } catch (error) {
         console.error('Signup error:', error);
@@ -33,20 +35,27 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const username = req.body.username?.trim();
+        const password = req.body.password?.trim();
 
         if (!username || !password) {
             return res.status(400).json({ message: 'Username and password are required' });
         }
 
+        console.log(`Login attempt for username: ${username}`);
         const userKey = `user:${username}`;
         const userData = await client.hGetAll(userKey);
 
+        console.log(`User data found:`, userData);
+
         if (!userData || Object.keys(userData).length === 0) {
+            console.log(`User ${username} not found in Redis.`);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const isMatch = await bcrypt.compare(password, userData.password);
+        const isMatch = (password === userData.password);
+        console.log(`Password match: ${isMatch} (Provided: ${password}, Stored: ${userData.password})`);
+        
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }

@@ -16,7 +16,7 @@ export const uploadPrescription = async (req, res) => {
             return res.status(400).json({ message: 'No image uploaded' });
         }
 
-        console.log('Processing upload for user:', req.username);
+        console.log('Processing upload for guest user');
         const imageBuffer = req.file.buffer;
         const imageHash = `h-${imageBuffer.length}-${imageBuffer.slice(0, 50).toString('hex')}`;
         const cacheKey = `ocr:${imageHash}`;
