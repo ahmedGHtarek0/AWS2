@@ -7,6 +7,18 @@ import coreRoutes from './routes/core.js';
 const app = express();
 const PORT = 5000;
 
+
+// write a code for ratetime lime from DDOS attack using express-rate-limit
+import rateLimit from 'express-rate-limit';
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again after 15 minutes'
+});
+
+app.use(limiter);
+
 // Middleware
 app.use(cors({
   origin: "*",
