@@ -22,7 +22,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.send("OK");
+  res.send("connected Ec2 to backend Successfully");
 });
 
 app.use('/api', coreRoutes);
