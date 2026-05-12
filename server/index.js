@@ -18,7 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.get("/", (req, res) => {
-  res.send("ROOT OK");
+  res.send("ROOT endpoint test successfully");
 });
 
 app.get("/health", (req, res) => {
