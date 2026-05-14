@@ -30,7 +30,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.get("/", (req, res) => {
-  res.send("ROOT endpoint test successfully");
+  res.send("ec2 after clouser endpoint test successfully");
 });
 
 app.get("/health", (req, res) => {
